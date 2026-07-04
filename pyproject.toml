@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "contextwatch"
+version = "0.1.0"
+description = "Context window profiler for LLM agents: per-turn token ledger, eviction and compaction tracking, compaction quality scoring, standalone HTML reports."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Datta Sai Krishna Somesula"}]
+keywords = ["llm", "agents", "observability", "context-window", "profiler",
+            "langgraph", "anthropic"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.10",
+  "Topic :: Software Development :: Debuggers",
+]
+dependencies = []                       # core = stdlib only
+
+[project.optional-dependencies]
+anthropic = ["anthropic>=0.40"]
+langchain = ["langchain-core>=0.3"]
+tiktoken  = ["tiktoken>=0.7"]
+dev       = ["pytest", "build", "twine"]
+
+[project.scripts]
+contextwatch = "contextwatch.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/sackri10/contextwatch"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+contextwatch = ["report_template.html"]

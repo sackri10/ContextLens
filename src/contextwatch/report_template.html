@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>contextwatch report</title>
+<style>
+  :root {
+    --paper: #EEF1F4;
+    --ink: #16232E;
+    --hairline: #CBD3DC;
+    --panel: #FFFFFF;
+    --c-system: #5B6EE1;
+    --c-tool_result: #E08A3C;
+    --c-user: #2E9E83;
+    --c-compaction_summary: #C94F6D;
+    --c-assistant: #7A8699;
+    --c-assistant_action: #B58A2A;
+    --c-retrieval: #4FA8C9;
+    --c-other: #9AA5B1;
+    --c-evicted: #7A8699;
+    --c-server_edit: #B58A2A;
+    --c-server_compaction: var(--c-compaction_summary);
+    --c-reversible_evict: #2E9E83;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: var(--paper); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  .mono { font-family: "SF Mono", "Menlo", "Consolas", monospace; font-variant-numeric: tabular-nums; }
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 14px 22px; border-bottom: 1px solid var(--hairline);
+    background: var(--panel);
+  }
+  header .title { font-size: 15px; font-weight: 600; letter-spacing: 0.2px; }
+  header .title span { color: #5B6EE1; }
+  header .stats { font-size: 12.5px; color: #55606C; }
+  header .stats b { color: var(--ink); }
+  main { padding: 18px 22px 40px; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--hairline); border-radius: 6px;
+    padding: 14px 16px; margin-bottom: 16px;
+  }
+  .panel h2 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+    color: #6C7683; margin: 0 0 10px;
+  }
+  #chartWrap { position: relative; }
+  #chart { display: block; width: 100%; height: 320px; cursor: crosshair; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; margin-top: 8px; color: #465060; }
+  .legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .cols { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; align-items: start; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; font-size: 10.5px; text-transform: uppercase; color: #6C7683;
+       border-bottom: 1px solid var(--hairline); padding: 5px 6px; font-weight: 600; }
+  td { padding: 5px 6px; border-bottom: 1px solid #F0F2F4; vertical-align: top; }
+  tr:hover td { background: #F7F9FB; }
+  .src-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .preview { color: #55606C; max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag { font-size: 10.5px; padding: 1px 6px; border-radius: 10px; background: #EEF1F4; color: #465060; }
+  .turnPicker { font-size: 12px; color: #6C7683; margin-bottom: 8px; }
+  .turnPicker b { color: var(--ink); }
+  .events { max-height: 320px; overflow-y: auto; }
+  .ev-row { padding: 6px 0; border-bottom: 1px solid #F0F2F4; font-size: 12px; }
+  .ev-row .ev-turn { color: #6C7683; margin-right: 8px; }
+  .ev-entered { color: #2E9E83; }
+  .ev-evicted { color: var(--c-evicted); }
+  .ev-compaction { color: #C94F6D; font-weight: 600; }
+  .ev-server_edit { color: var(--c-server_edit); font-weight: 600; }
+  .ev-server_compaction { color: var(--c-server_compaction); font-weight: 600; }
+  .ev-reversible_evict { color: var(--c-reversible_evict); font-weight: 600; }
+  .ev-badge { font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-left: 6px; }
+  .ev-badge.lossy { background: #FBE9ED; color: #C94F6D; }
+  .ev-badge.retrievable { background: #E6F4F0; color: #2E9E83; }
+  .legend-note { font-size: 11px; color: #6C7683; margin-top: 6px; }
+  .empty { color: #9AA5B1; font-size: 12.5px; padding: 10px 0; }
+  .stale-row { display: flex; justify-content: space-between; font-size: 12px; padding: 6px 0; border-bottom: 1px solid #F0F2F4; }
+  .stale-row .lbl { color: #465060; }
+  .stale-row .val { color: var(--ink); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">contextwatch · <span id="sessionLabel">session</span></div>
+  <div class="stats mono" id="headerStats"></div>
+</header>
+
+<main>
+  <div class="panel">
+    <h2>Composition stream</h2>
+    <div id="chartWrap">
+      <svg id="chart" viewBox="0 0 1000 320" preserveAspectRatio="none"></svg>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="legend-note">↺ teal = compressed but retrievable (Headroom CCR) &middot; &#9670; rose = summarized, original gone</div>
+  </div>
+
+  <div class="panel">
+    <h2>Client estimate vs. provider usage (divergence)</h2>
+    <div id="divergenceWrap">
+      <svg id="divergenceChart" viewBox="0 0 1000 200" preserveAspectRatio="none"></svg>
+    </div>
+    <div class="legend" id="divergenceLegend">
+      <span><span class="dot" style="background:var(--c-system)"></span>client estimate (totals.tokens)</span>
+      <span><span class="dot" style="background:var(--ink)"></span>provider usage (usage.input_tokens)</span>
+      <span><span class="dot" style="background:var(--c-server_edit)"></span>server_edit</span>
+      <span><span class="dot" style="background:var(--c-server_compaction)"></span>server_compaction</span>
+    </div>
+  </div>
+
+  <div class="cols">
+    <div class="panel">
+      <h2>Turn inspector</h2>
+      <div class="turnPicker">Turn <b id="selTurn">-</b> &middot; <span id="selMeta"></span></div>
+      <table id="blockTable">
+        <thead><tr><th>Source</th><th>Tool</th><th class="mono">Tokens</th><th class="mono">Age</th><th>Preview</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Stale burn (tokens &times; age, top 5)</h2>
+        <div id="staleBurn"></div>
+      </div>
+      <div class="panel">
+        <h2>Events timeline</h2>
+        <div class="events" id="events"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+/*__DATA__*/
+
+(function () {
+  const SOURCE_ORDER = ["system", "tool_result", "user", "assistant",
+                         "assistant_action", "compaction_summary", "retrieval", "other"];
+  const COLOR = {
+    system: "var(--c-system)", tool_result: "var(--c-tool_result)",
+    user: "var(--c-user)", assistant: "var(--c-assistant)",
+    assistant_action: "var(--c-assistant_action)",
+    compaction_summary: "var(--c-compaction_summary)",
+    retrieval: "var(--c-retrieval)", other: "var(--c-other)",
+  };
+
+  const turns = (typeof TURNS !== "undefined" && TURNS) || [];
+  const session = (typeof SESSION !== "undefined" && SESSION) || {label: "session"};
+  const quality = (typeof QUALITY !== "undefined" && QUALITY) || [];
+  const qualityByTurn = Object.fromEntries(quality.map(q => [q.turn, q]));
+
+  // Event styling reference: icon + color per event type, used by both the
+  // composition-stream markers and the events timeline. `reversible_evict`
+  // (Headroom-style compression) gets its own teal/retrievable treatment --
+  // it must never be conflated with the rose "lossy" diamond used for
+  // compaction/server_compaction, since nothing was actually lost.
+  const EVENT_STYLES = {
+    entered:           { color: null },                        // no marker, just growth
+    evicted:           { color: "var(--c-evicted)", icon: "▾" },
+    compaction:        { color: "var(--c-compaction_summary)", icon: "◆" },
+    server_edit:       { color: "var(--c-server_edit)", icon: "✂" },
+    server_compaction: { color: "var(--c-server_compaction)", icon: "◆" },
+    reversible_evict:  { color: "var(--c-reversible_evict)", icon: "↺" },
+  };
+
+  function eventBadge(evt) {
+    if (evt.type === "reversible_evict") return `<span class="ev-badge retrievable">↺ retrievable</span>`;
+    if (evt.type === "compaction" || evt.type === "server_compaction") {
+      return `<span class="ev-badge lossy">◆ summarized (lossy)</span>`;
+    }
+    return "";
+  }
+
+  const peak = turns.reduce((m, t) => Math.max(m, t.totals.tokens), 0);
+  const compactions = turns.filter(t => (t.events || []).some(e => e.type === "compaction"));
+  const serverEdits = turns.filter(t => (t.events || []).some(e => e.type === "server_edit"));
+  const serverCompactions = turns.filter(t => (t.events || []).some(e => e.type === "server_compaction"));
+  const reversibleSaved = turns.reduce((sum, t) =>
+    sum + (t.events || []).filter(e => e.type === "reversible_evict")
+                            .reduce((s, e) => s + (e.tokens || 0), 0), 0);
+
+  document.getElementById("sessionLabel").textContent = session.label || "session";
+  let statsHtml =
+    `${turns.length} turns &middot; peak <b>${peak.toLocaleString()}</b> tok &middot; ${compactions.length} compaction${compactions.length === 1 ? "" : "s"}`;
+  if (serverEdits.length) statsHtml += ` &middot; ${serverEdits.length} server edit${serverEdits.length === 1 ? "" : "s"}`;
+  if (serverCompactions.length) statsHtml += ` &middot; ${serverCompactions.length} server compaction${serverCompactions.length === 1 ? "" : "s"}`;
+  if (reversibleSaved) statsHtml += ` &middot; <b>${reversibleSaved.toLocaleString()}</b> tok reversibly saved (Headroom)`;
+  document.getElementById("headerStats").innerHTML = statsHtml;
+
+  // ---- legend ----
+  const legendEl = document.getElementById("legend");
+  const sourcesPresent = SOURCE_ORDER.filter(s => turns.some(t => (t.totals.by_source || {})[s]));
+  legendEl.innerHTML = sourcesPresent.map(s =>
+    `<span><span class="dot" style="background:${COLOR[s]}"></span>${s}</span>`).join("");
+
+  // ---- composition stream (stacked area) ----
+  const W = 1000, H = 320, PAD_L = 40, PAD_B = 24, PAD_T = 10, PAD_R = 10;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+  const n = Math.max(turns.length, 1);
+  const xOf = i => PAD_L + (n === 1 ? 0 : (i / (n - 1)) * plotW);
+  const yOf = v => PAD_T + plotH - (peak === 0 ? 0 : (v / peak) * plotH);
+
+  const svg = document.getElementById("chart");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const svgns = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) {
+    const e = document.createElementNS(svgns, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  // hairline gridlines
+  for (let g = 0; g <= 4; g++) {
+    const v = (peak / 4) * g;
+    const y = yOf(v);
+    svg.appendChild(el("line", {x1: PAD_L, y1: y, x2: W - PAD_R, y2: y, stroke: "#DDE2E8", "stroke-width": 1}));
+    const label = el("text", {x: 4, y: y + 3, "font-size": 9, fill: "#8B95A1"});
+    label.textContent = Math.round(v).toLocaleString();
+    svg.appendChild(label);
+  }
+
+  // stacked bands
+  let cumBase = turns.map(() => 0);
+  sourcesPresent.forEach(source => {
+    const top = turns.map((t, i) => cumBase[i] + ((t.totals.by_source || {})[source] || 0));
+    let d = `M ${xOf(0)} ${yOf(cumBase[0])} `;
+    turns.forEach((t, i) => { d += `L ${xOf(i)} ${yOf(top[i])} `; });
+    for (let i = turns.length - 1; i >= 0; i--) { d += `L ${xOf(i)} ${yOf(cumBase[i])} `; }
+    d += "Z";
+    svg.appendChild(el("path", {d, fill: COLOR[source], opacity: 0.88}));
+    cumBase = top;
+  });
+
+  // markers near the right edge would clip their label off-canvas; flip
+  // the anchor so text grows leftward instead.
+  function edgeLabelAttrs(x, y) {
+    const nearRight = x > W - PAD_R - 100;
+    return {x: nearRight ? x - 4 : x + 4, y, "text-anchor": nearRight ? "end" : "start"};
+  }
+
+  // compaction markers
+  turns.forEach((t, i) => {
+    const comp = (t.events || []).find(e => e.type === "compaction");
+    if (comp) {
+      const x = xOf(i);
+      svg.appendChild(el("line", {x1: x, y1: PAD_T, x2: x, y2: H - PAD_B, stroke: "var(--c-compaction_summary)",
+                                    "stroke-width": 1.5, "stroke-dasharray": "4,3"}));
+      const q = qualityByTurn[t.turn];
+      const label = el("text", {...edgeLabelAttrs(x, PAD_T + 11), "font-size": 9.5, fill: "#C94F6D", "font-weight": 600});
+      label.textContent = q ? `t${t.turn} · quality ${q.score.toFixed(2)}` : `t${t.turn} · compaction`;
+      svg.appendChild(label);
+    }
+    const ev = (t.events || []).find(e => e.type === "evicted");
+    if (ev) {
+      const x = xOf(i);
+      svg.appendChild(el("path", {d: `M ${x - 3} ${H - PAD_B} L ${x + 3} ${H - PAD_B} L ${x} ${H - PAD_B + 7} Z`, fill: "var(--c-evicted)"}));
+    }
+    // server-side context management: the client message list never changes
+    // for these, so there's no entered/evicted block diff -- these markers
+    // come entirely from the response metadata (see wrap_anthropic_beta).
+    const sedit = (t.events || []).find(e => e.type === "server_edit");
+    if (sedit) {
+      const x = xOf(i);
+      svg.appendChild(el("line", {x1: x, y1: PAD_T, x2: x, y2: H - PAD_B, stroke: "var(--c-server_edit)",
+                                    "stroke-width": 1.5, "stroke-dasharray": "2,3"}));
+      const label = el("text", {...edgeLabelAttrs(x, PAD_T + 22), "font-size": 9.5, fill: "var(--c-server_edit)", "font-weight": 600});
+      label.textContent = `t${t.turn} · server edit`;
+      svg.appendChild(label);
+    }
+    const scomp = (t.events || []).find(e => e.type === "server_compaction");
+    if (scomp) {
+      const x = xOf(i);
+      svg.appendChild(el("line", {x1: x, y1: PAD_T, x2: x, y2: H - PAD_B, stroke: "var(--c-server_compaction)",
+                                    "stroke-width": 1.5, "stroke-dasharray": "6,2"}));
+      const label = el("text", {...edgeLabelAttrs(x, PAD_T + 33), "font-size": 9.5, fill: "var(--c-server_compaction)", "font-weight": 600});
+      label.textContent = `t${t.turn} · server compaction`;
+      svg.appendChild(label);
+    }
+    // Headroom-style reversible compression: nothing was lost, so this gets
+    // its own teal "retrievable" marker rather than the rose lossy diamond
+    // used for compaction/server_compaction.
+    const rev = (t.events || []).find(e => e.type === "reversible_evict");
+    if (rev) {
+      const x = xOf(i);
+      svg.appendChild(el("line", {x1: x, y1: PAD_T, x2: x, y2: H - PAD_B, stroke: "var(--c-reversible_evict)",
+                                    "stroke-width": 1.5, "stroke-dasharray": "1,3"}));
+      const label = el("text", {...edgeLabelAttrs(x, PAD_T + 44), "font-size": 9.5, fill: "var(--c-reversible_evict)", "font-weight": 600});
+      label.textContent = `t${t.turn} · ↺ retrievable`;
+      svg.appendChild(label);
+    }
+  });
+
+  // invisible hit columns for turn selection
+  turns.forEach((t, i) => {
+    const x = xOf(i);
+    const bandW = n === 1 ? plotW : plotW / (n - 1);
+    const hit = el("rect", {x: x - bandW / 2, y: PAD_T, width: bandW, height: plotH, fill: "transparent"});
+    hit.style.cursor = "pointer";
+    hit.addEventListener("click", () => selectTurn(t.turn));
+    svg.appendChild(hit);
+  });
+
+  // ---- divergence: client estimate (totals.tokens) vs. provider usage
+  // (usage.input_tokens). The two only diverge when something happened to
+  // the context that the client-side message list doesn't reflect -- i.e.
+  // server-side context editing or compaction. That gap is the only way to
+  // *see* server-side management, since hash-diffing the request never will.
+  const hasUsage = turns.some(t => t.usage && typeof t.usage.input_tokens === "number");
+  const divSvg = document.getElementById("divergenceChart");
+  if (hasUsage) {
+    const DW = 1000, DH = 200, DPAD_L = 44, DPAD_B = 20, DPAD_T = 10, DPAD_R = 10;
+    const dPlotW = DW - DPAD_L - DPAD_R, dPlotH = DH - DPAD_T - DPAD_B;
+    const dPeak = turns.reduce((m, t) => Math.max(
+      m, t.totals.tokens, (t.usage && t.usage.input_tokens) || 0), 0);
+    const dxOf = i => DPAD_L + (n === 1 ? 0 : (i / (n - 1)) * dPlotW);
+    const dyOf = v => DPAD_T + dPlotH - (dPeak === 0 ? 0 : (v / dPeak) * dPlotH);
+
+    for (let g = 0; g <= 4; g++) {
+      const v = (dPeak / 4) * g;
+      const y = dyOf(v);
+      divSvg.appendChild(el("line", {x1: DPAD_L, y1: y, x2: DW - DPAD_R, y2: y, stroke: "#DDE2E8", "stroke-width": 1}));
+      const label = el("text", {x: 4, y: y + 3, "font-size": 9, fill: "#8B95A1"});
+      label.textContent = Math.round(v).toLocaleString();
+      divSvg.appendChild(label);
+    }
+
+    const lineD = getY => turns.map((t, i) => `${i === 0 ? "M" : "L"} ${dxOf(i)} ${dyOf(getY(t))}`).join(" ");
+    divSvg.appendChild(el("path", {d: lineD(t => t.totals.tokens), fill: "none",
+                                    stroke: "var(--c-system)", "stroke-width": 2}));
+    divSvg.appendChild(el("path", {d: lineD(t => (t.usage && t.usage.input_tokens) || 0), fill: "none",
+                                    stroke: "var(--ink)", "stroke-width": 2, "stroke-dasharray": "5,3"}));
+
+    // the "scissors moment" -- server-side edits/compactions mark exactly
+    // where the provider-usage line drops while the client estimate keeps
+    // climbing.
+    turns.forEach((t, i) => {
+      const edit = (t.events || []).find(e => e.type === "server_edit");
+      const comp = (t.events || []).find(e => e.type === "server_compaction");
+      if (edit || comp) {
+        const x = dxOf(i);
+        const color = comp ? "var(--c-server_compaction)" : "var(--c-server_edit)";
+        divSvg.appendChild(el("line", {x1: x, y1: DPAD_T, x2: x, y2: DH - DPAD_B, stroke: color,
+                                        "stroke-width": 1.5, "stroke-dasharray": "3,3"}));
+        divSvg.appendChild(el("circle", {cx: x, cy: dyOf((t.usage && t.usage.input_tokens) || 0),
+                                          r: 3.5, fill: color}));
+      }
+    });
+  } else {
+    document.getElementById("divergenceWrap").innerHTML =
+      `<div class="empty">no provider usage recorded on any turn</div>`;
+  }
+
+  // ---- turn inspector / stale burn / events ----
+  function shortId(id) { return (id || "").slice(0, 6); }
+
+  function selectTurn(turnNo) {
+    const t = turns.find(x => x.turn === turnNo) || turns[turns.length - 1];
+    if (!t) return;
+    document.getElementById("selTurn").textContent = t.turn;
+    document.getElementById("selMeta").textContent =
+      `${t.model || "?"} · ${t.totals.tokens.toLocaleString()} tok · ${t.totals.blocks} blocks` +
+      (t.meta && t.meta.node ? ` · node=${t.meta.node}` : "");
+
+    const blocks = (t.blocks || []).slice().sort((a, b) => b.tokens - a.tokens);
+    const tbody = document.querySelector("#blockTable tbody");
+    tbody.innerHTML = blocks.map(b => `
+      <tr>
+        <td><span class="src-dot" style="background:${COLOR[b.source] || COLOR.other}"></span>${b.source}</td>
+        <td>${b.tool_name ? `<span class="tag">${b.tool_name}</span>` : ""}</td>
+        <td class="mono">${b.tokens.toLocaleString()}</td>
+        <td class="mono">${b.age}</td>
+        <td class="preview">${escapeHtml(b.preview || "")}</td>
+      </tr>`).join("") || `<tr><td colspan="5" class="empty">no blocks</td></tr>`;
+
+    const stale = blocks.map(b => ({...b, burn: b.tokens * b.age}))
+      .sort((a, b) => b.burn - a.burn).slice(0, 5);
+    document.getElementById("staleBurn").innerHTML = stale.length ? stale.map(b => `
+      <div class="stale-row">
+        <span class="lbl">${shortId(b.id)} &middot; ${b.tool_name || b.source} (age ${b.age})</span>
+        <span class="val mono">${b.burn.toLocaleString()}</span>
+      </div>`).join("") : `<div class="empty">no stale blocks yet</div>`;
+
+    const evEl = document.getElementById("events");
+    const rows = [];
+    turns.filter(x => x.turn <= turnNo).forEach(x => {
+      (x.events || []).forEach(e => {
+        rows.push({turn: x.turn, type: e.type, tokens: e.tokens, detail: e.detail});
+      });
+    });
+    rows.reverse();
+    evEl.innerHTML = rows.length ? rows.map(r => {
+      const style = EVENT_STYLES[r.type];
+      const icon = style && style.icon ? `${style.icon} ` : "";
+      return `
+      <div class="ev-row">
+        <span class="ev-turn mono">t${r.turn}</span>
+        <span class="ev-${r.type}">${icon}${r.type}</span>
+        <span class="mono"> ${r.tokens.toLocaleString()} tok</span>
+        ${r.detail ? ` &middot; ${escapeHtml(r.detail)}` : ""}
+        ${eventBadge(r)}
+      </div>`;
+    }).join("") : `<div class="empty">no events yet</div>`;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+
+  if (turns.length) {
+    const firstCompaction = compactions[0];
+    selectTurn(firstCompaction ? firstCompaction.turn : turns[turns.length - 1].turn);
+  } else {
+    document.getElementById("blockTable").querySelector("tbody").innerHTML =
+      `<tr><td colspan="5" class="empty">no turns recorded</td></tr>`;
+    document.getElementById("staleBurn").innerHTML = `<div class="empty">no data</div>`;
+    document.getElementById("events").innerHTML = `<div class="empty">no data</div>`;
+  }
+})();
+</script>
+
+</body>
+</html>
