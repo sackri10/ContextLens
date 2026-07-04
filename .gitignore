@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+*.egg-info/
+build/
+dist/
+
+# secrets
+.env
+
+# generated artifacts (demo + validation runs)
+examples/demo.jsonl
+examples/demo-report.html
+examples/validation/*.jsonl
+examples/validation/*-report.html
+
+# local tooling
+.claude/
