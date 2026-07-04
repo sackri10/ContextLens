@@ -1,4 +1,4 @@
-"""ContextLens: a context window profiler for LLM agents.
+"""CtxScope: a context window profiler for LLM agents.
 
 Public API:
     ContextProfiler   - core recorder, turns message lists into a JSONL ledger

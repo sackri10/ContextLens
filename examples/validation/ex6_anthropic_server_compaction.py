@@ -19,9 +19,9 @@ from __future__ import annotations
 
 import anthropic
 
-from contextlens import ContextProfiler
-from contextlens.integrations.anthropic_client import wrap_anthropic_beta
-from contextlens.report import render
+from ctxscope import ContextProfiler
+from ctxscope.integrations.anthropic_client import wrap_anthropic_beta
+from ctxscope.report import render
 
 LABEL = "ex6-compact"
 

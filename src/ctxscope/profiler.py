@@ -20,7 +20,7 @@ COMPACTION_MIN_EVICTED = 3
 class ContextProfiler:
     def __init__(
         self,
-        sink: str | Path | None = "contextlens.jsonl",
+        sink: str | Path | None = "ctxscope.jsonl",
         *,
         label: str = "session",
         token_counter: TokenCounter = heuristic_counter,

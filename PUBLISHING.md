@@ -1,21 +1,21 @@
-# Publishing ContextLens
+# Publishing CtxScope
 
 ## 1. Publish to GitHub
 
 ```bash
-cd contextlens
+cd ctxscope
 git init -b main            # already done if you followed the setup
 git add -A
 git commit -m "Initial release: context window profiler for LLM agents"
 
 # Create the repo and push (requires `gh` CLI, or create it on github.com)
-gh repo create contextlens --public --source=. --push
+gh repo create ctxscope --public --source=. --push
 ```
 
-Manual alternative: create an empty repo named `contextlens` on github.com, then
+Manual alternative: create an empty repo named `ctxscope` on github.com, then
 
 ```bash
-git remote add origin https://github.com/sackri10/contextlens.git
+git remote add origin https://github.com/sackri10/ctxscope.git
 git push -u origin main
 ```
 
@@ -39,7 +39,7 @@ git push -u origin main
 ```bash
 # 0. Bump the version in BOTH places (keep them in sync):
 #    - pyproject.toml       -> version = "X.Y.Z"
-#    - src/contextlens/__init__.py -> __version__ = "X.Y.Z"
+#    - src/ctxscope/__init__.py -> __version__ = "X.Y.Z"
 
 # 1. Clean old artifacts and run tests
 rm -rf dist/ build/ src/*.egg-info
@@ -47,16 +47,16 @@ pytest
 
 # 2. Build sdist + wheel
 python -m build
-# -> dist/contextlens-X.Y.Z.tar.gz
-# -> dist/contextlens-X.Y.Z-py3-none-any.whl
+# -> dist/ctxscope-X.Y.Z.tar.gz
+# -> dist/ctxscope-X.Y.Z-py3-none-any.whl
 
 # 3. Sanity-check the metadata
 twine check dist/*
 
 # 4. Dry run against TestPyPI first
 twine upload --repository testpypi dist/*
-pip install --index-url https://test.pypi.org/simple/ --no-deps contextlens
-python -c "import contextlens; print(contextlens.__version__)"
+pip install --index-url https://test.pypi.org/simple/ --no-deps ctxscope
+python -c "import ctxscope; print(ctxscope.__version__)"
 
 # 5. Publish for real
 twine upload dist/*
@@ -79,8 +79,8 @@ password = pypi-...
 ### Verify
 
 ```bash
-pip install contextlens
-contextlens --help
+pip install ctxscope
+ctxscope --help
 ```
 
 ## 3. Recommended: automate with GitHub Actions (trusted publishing)
@@ -88,7 +88,7 @@ contextlens --help
 PyPI supports **Trusted Publishers** — no tokens stored in CI:
 
 1. On PyPI: project → Settings → Publishing → add GitHub publisher
-   (owner `sackri10`, repo `contextlens`, workflow `release.yml`).
+   (owner `sackri10`, repo `ctxscope`, workflow `release.yml`).
 2. Add `.github/workflows/release.yml`:
 
 ```yaml

@@ -1,4 +1,4 @@
-from contextlens import ContextProfiler
+from ctxscope import ContextProfiler
 
 
 def _turns(profiler):
@@ -50,7 +50,7 @@ def test_ledger_written_to_disk(tmp_path):
 
 
 def test_block_id_stable_across_turns():
-    from contextlens.models import block_id
+    from ctxscope.models import block_id
     a = block_id("user", "hello")
     b = block_id("user", "hello")
     c = block_id("user", "hello world")
@@ -59,7 +59,7 @@ def test_block_id_stable_across_turns():
 
 
 def test_source_classification():
-    from contextlens.classify import classify
+    from ctxscope.classify import classify
     assert classify({"role": "system", "content": "sys"}, 0) == ("system", None)
     assert classify({"role": "user", "content": "hi"}, 0) == ("user", None)
     tool_use = {"role": "assistant", "content": [
@@ -135,7 +135,7 @@ def test_wrap_anthropic_beta_captures_applied_edits(tmp_path):
     to prove wrap_anthropic_beta reads context_management.applied_edits and
     stop_reason off the response, not the request."""
     from types import SimpleNamespace
-    from contextlens.integrations.anthropic_client import wrap_anthropic_beta
+    from ctxscope.integrations.anthropic_client import wrap_anthropic_beta
 
     edit = SimpleNamespace(type="clear_tool_uses_20250919",
                             cleared_tool_uses=3, cleared_input_tokens=1200)
@@ -166,7 +166,7 @@ def test_wrap_anthropic_beta_captures_applied_edits(tmp_path):
 
 def test_wrap_anthropic_beta_captures_server_compaction(tmp_path):
     from types import SimpleNamespace
-    from contextlens.integrations.anthropic_client import wrap_anthropic_beta
+    from ctxscope.integrations.anthropic_client import wrap_anthropic_beta
 
     response = SimpleNamespace(
         usage=SimpleNamespace(input_tokens=300, output_tokens=10),

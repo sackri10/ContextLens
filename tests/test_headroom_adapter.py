@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from contextlens import ContextProfiler
-from contextlens.integrations.headroom_adapter import wrap_headroom_compress
+from ctxscope import ContextProfiler
+from ctxscope.integrations.headroom_adapter import wrap_headroom_compress
 
 
 @dataclass

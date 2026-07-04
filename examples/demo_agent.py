@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from contextlens import ContextProfiler
+from ctxscope import ContextProfiler
 
 SYSTEM_PROMPT = (
     "You are a SQL analyst agent. You have access to a `run_sql` tool "
@@ -127,7 +127,7 @@ def main():
 
     profiler.close()
 
-    from contextlens.report import render
+    from ctxscope.report import render
     out = render(ledger_path, HERE / "demo-report.html")
     print(f"Ledger: {ledger_path}")
     print(f"Report: {out}")

@@ -3,7 +3,7 @@
 SummarizationNode summarizes once cumulative tokens reach
 `max_tokens_before_summary`, replacing older messages with a summary
 message. Key subtlety: it keeps full history in `messages` and writes the
-compacted view to `summarized_messages` -- but ContextLens observes *what
+compacted view to `summarized_messages` -- but CtxScope observes *what
 the model was actually invoked with* (call_model reads `summarized_messages`),
 so it sees the compacted list. This example validates exactly that
 boundary-level claim.

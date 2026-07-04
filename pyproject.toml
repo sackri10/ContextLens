@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "contextlens"
+name = "ctxscope"
 version = "0.1.0"
 description = "Context window profiler for LLM agents: per-turn token ledger, eviction and compaction tracking, compaction quality scoring, standalone HTML reports."
 readme = "README.md"
@@ -27,13 +27,13 @@ tiktoken  = ["tiktoken>=0.7"]
 dev       = ["pytest", "build", "twine"]
 
 [project.scripts]
-contextlens = "contextlens.cli:main"
+ctxscope = "ctxscope.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/sackri10/contextlens"
+Homepage = "https://github.com/sackri10/ctxscope"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-contextlens = ["report_template.html"]
+ctxscope = ["report_template.html"]
