@@ -24,7 +24,7 @@ def load_ledger(path):
     return header, turns, quality
 
 
-def render(ledger_path, out_path="ctxscope-report.html"):
+def render(ledger_path, out_path="contextwatch-report.html"):
     header, turns, quality = load_ledger(ledger_path)
     html = TEMPLATE.read_text(encoding="utf-8").replace(
         "/*__DATA__*/",

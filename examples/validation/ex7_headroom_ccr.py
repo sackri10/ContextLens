@@ -10,7 +10,7 @@ records this as a `reversible_evict` event, never as `compaction`.
 
 Expected ledger signature:
   - No `evicted`/`compaction` events from the raw tool output (Headroom
-    compresses it before it's ever appended to `messages`, so CtxScope
+    compresses it before it's ever appended to `messages`, so ContextWatch
     never even sees the uncompressed version as a block)
   - A `reversible_evict` event on every turn where compress() saved tokens,
     with `tokens` exactly equal to `tokens_before - tokens_after`
@@ -27,9 +27,9 @@ from dotenv import load_dotenv
 import anthropic
 from headroom import compress
 
-from ctxscope import ContextProfiler
-from ctxscope.integrations.headroom_adapter import wrap_headroom_compress
-from ctxscope.report import render
+from contextwatch import ContextProfiler
+from contextwatch.integrations.headroom_adapter import wrap_headroom_compress
+from contextwatch.report import render
 
 load_dotenv()
 
@@ -73,7 +73,7 @@ def main():
         compressed = headroom_compress(raw_results, model="claude-sonnet-4-6")
         messages.append({"role": "user", "content": compressed.messages})
 
-        # CtxScope profiles what the model actually received this turn
+        # ContextWatch profiles what the model actually received this turn
         profiler.record_turn(messages, model="claude-sonnet-4-6",
                               usage={"input_tokens": resp.usage.input_tokens,
                                      "output_tokens": resp.usage.output_tokens})

@@ -7,8 +7,8 @@ what happened in `context_management.applied_edits` (tool uses cleared,
 input tokens cleared).
 
 The design implication: the client message list is untouched, so
-CtxScope's hash-diffing sees nothing. `wrap_anthropic_beta` (see
-ctxscope/integrations/anthropic_client.py) reads the response instead
+ContextWatch's hash-diffing sees nothing. `wrap_anthropic_beta` (see
+contextwatch/integrations/anthropic_client.py) reads the response instead
 and surfaces it as a `server_edit` event.
 
 Expected ledger signature:
@@ -24,9 +24,9 @@ from __future__ import annotations
 
 import anthropic
 
-from ctxscope import ContextProfiler
-from ctxscope.integrations.anthropic_client import wrap_anthropic_beta
-from ctxscope.report import render
+from contextwatch import ContextProfiler
+from contextwatch.integrations.anthropic_client import wrap_anthropic_beta
+from contextwatch.report import render
 
 LABEL = "ex5-editing"
 

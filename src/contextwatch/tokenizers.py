@@ -26,7 +26,7 @@ def tiktoken_counter(encoding: str = "cl100k_base") -> TokenCounter:
 
 def anthropic_counter(client, model: str) -> TokenCounter:
     """Exact via the count_tokens endpoint. Use for offline re-scoring of a
-    ledger (`ctxscope rescore`), never inline in the agent loop."""
+    ledger (`contextwatch rescore`), never inline in the agent loop."""
     def count(text: str) -> int:
         if not text:
             return 0

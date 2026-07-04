@@ -1,4 +1,4 @@
-# CtxScope — Context Window Profiler for LLM Agents
+# ContextWatch — Context Window Profiler for LLM Agents
 
 **Complete architecture, design, and implementation specification**
 
@@ -44,7 +44,7 @@ A pip-installable Python package that intercepts agent LLM calls, produces a per
 │  • wrap_anthropic_beta(client, profiler) — same, + reads          │
 │    response.context_management.applied_edits / stop_reason for    │
 │    server-side context editing & compaction (see §5 note, §9.3)   │
-│  • CtxScopeCallbackHandler        — LangChain callback        │
+│  • ContextWatchCallbackHandler        — LangChain callback        │
 │  • profiler.record_turn(...)         — manual, framework-free    │
 └──────────────┬──────────────────────────────────────────────────┘
                ▼
@@ -67,7 +67,7 @@ A pip-installable Python package that intercepts agent LLM calls, produces a per
        ▼                                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  REPORT (report.py + cli.py)                                     │
-│  `ctxscope report session.jsonl` → single self-contained     │
+│  `contextwatch report session.jsonl` → single self-contained     │
 │  HTML: stacked composition chart, eviction markers, turn         │
 │  inspector table, staleness heatmap, quality scores,              │
 │  client-estimate-vs-provider-usage divergence panel               │
@@ -83,10 +83,10 @@ A pip-installable Python package that intercepts agent LLM calls, produces a per
 ## 3. Package layout
 
 ```
-ctxscope/
+contextwatch/
 ├── pyproject.toml
 ├── README.md
-├── src/ctxscope/
+├── src/contextwatch/
 │   ├── __init__.py            # public API: ContextProfiler, wrap_anthropic, ...
 │   ├── models.py              # ContextBlock, TurnRecord, Event, SessionHeader
 │   ├── tokenizers.py          # pluggable token counters
@@ -94,7 +94,7 @@ ctxscope/
 │   ├── profiler.py            # ContextProfiler core
 │   ├── quality.py             # CompactionQualityChecker
 │   ├── report.py              # JSONL → standalone HTML
-│   ├── cli.py                 # `ctxscope report|stats`
+│   ├── cli.py                 # `contextwatch report|stats`
 │   └── integrations/
 │       ├── __init__.py
 │       ├── anthropic_client.py    # wrap_anthropic + wrap_anthropic_beta
@@ -116,7 +116,7 @@ ctxscope/
     └── test_headroom_adapter.py
 ```
 
-Dependency policy: **core has zero required dependencies** (stdlib only). Optional extras: `ctxscope[anthropic]`, `ctxscope[langchain]`, `ctxscope[tiktoken]`.
+Dependency policy: **core has zero required dependencies** (stdlib only). Optional extras: `contextwatch[anthropic]`, `contextwatch[langchain]`, `contextwatch[tiktoken]`.
 
 ---
 
@@ -185,7 +185,7 @@ A sixth event type covers a fundamentally different failure mode:
 ## 5. Core models (`models.py`)
 
 ```python
-"""Data models for the CtxScope ledger."""
+"""Data models for the ContextWatch ledger."""
 
 from __future__ import annotations
 
@@ -343,7 +343,7 @@ def tiktoken_counter(encoding: str = "cl100k_base") -> TokenCounter:
 
 def anthropic_counter(client, model: str) -> TokenCounter:
     """Exact via the count_tokens endpoint. Use for offline re-scoring of a
-    ledger (`ctxscope rescore`), never inline in the agent loop."""
+    ledger (`contextwatch rescore`), never inline in the agent loop."""
     def count(text: str) -> int:
         if not text:
             return 0
@@ -467,7 +467,7 @@ COMPACTION_MIN_EVICTED = 3
 class ContextProfiler:
     def __init__(
         self,
-        sink: str | Path | None = "ctxscope.jsonl",
+        sink: str | Path | None = "contextwatch.jsonl",
         *,
         label: str = "session",
         token_counter: TokenCounter = heuristic_counter,
@@ -656,7 +656,7 @@ Usage:
 
 ```python
 from anthropic import Anthropic
-from ctxscope import ContextProfiler, wrap_anthropic
+from contextwatch import ContextProfiler, wrap_anthropic
 
 profiler = ContextProfiler("run.jsonl", label="text2sql")
 client = wrap_anthropic(Anthropic(), profiler)
@@ -668,7 +668,7 @@ Streaming variant: also patch `messages.stream` — record on `__enter__` with u
 ### 9.2 LangChain / LangGraph — callback handler
 
 ```python
-"""CtxScopeCallbackHandler: attach to any LangChain/LangGraph runnable."""
+"""ContextWatchCallbackHandler: attach to any LangChain/LangGraph runnable."""
 
 from __future__ import annotations
 from typing import Any
@@ -677,7 +677,7 @@ try:
     from langchain_core.callbacks import BaseCallbackHandler
     from langchain_core.messages import BaseMessage
 except ImportError as e:
-    raise ImportError("pip install 'ctxscope[langchain]'") from e
+    raise ImportError("pip install 'contextwatch[langchain]'") from e
 
 
 def _to_dict(msg: "BaseMessage") -> dict:
@@ -693,7 +693,7 @@ def _to_dict(msg: "BaseMessage") -> dict:
     return {"role": role, "content": content}
 
 
-class CtxScopeCallbackHandler(BaseCallbackHandler):
+class ContextWatchCallbackHandler(BaseCallbackHandler):
     def __init__(self, profiler):
         self.profiler = profiler
 
@@ -713,7 +713,7 @@ class CtxScopeCallbackHandler(BaseCallbackHandler):
 Usage with your Text-to-SQL LangGraph app:
 
 ```python
-handler = CtxScopeCallbackHandler(profiler)
+handler = ContextWatchCallbackHandler(profiler)
 graph.invoke(state, config={"callbacks": [handler]})
 ```
 
@@ -724,7 +724,7 @@ graph.invoke(state, config={"callbacks": [handler]})
 Context editing and compaction are **server-side** features (beta headers `context-management-2025-06-27` and `compact-2026-01-12`): the client's `messages` list is never mutated, so `wrap_anthropic`'s hash-diffing has nothing to diff. `wrap_anthropic_beta` reads the *response* instead:
 
 ```python
-# ctxscope/integrations/anthropic_client.py — wrap_anthropic_beta
+# contextwatch/integrations/anthropic_client.py — wrap_anthropic_beta
 
 def wrap_anthropic_beta(client, profiler, *, meta_fn=None):
     """Wrap client.beta.messages.create; captures server-side context edits."""
@@ -767,7 +767,7 @@ Usage:
 
 ```python
 import anthropic
-from ctxscope import ContextProfiler, wrap_anthropic_beta
+from contextwatch import ContextProfiler, wrap_anthropic_beta
 
 profiler = ContextProfiler("run.jsonl", label="clear-tool-uses")
 client = wrap_anthropic_beta(anthropic.Anthropic(), profiler)
@@ -796,7 +796,7 @@ messages go to the model. Headroom reports tokens_before/after directly --
 no need to infer compression from a hash diff, unlike every other integration."""
 
 from __future__ import annotations
-from ctxscope.models import Event
+from contextwatch.models import Event
 
 
 def wrap_headroom_compress(compress_fn, profiler):
@@ -836,8 +836,8 @@ Usage:
 
 ```python
 from headroom import compress
-from ctxscope import ContextProfiler
-from ctxscope.integrations.headroom_adapter import wrap_headroom_compress
+from contextwatch import ContextProfiler
+from contextwatch.integrations.headroom_adapter import wrap_headroom_compress
 
 profiler = ContextProfiler("run.jsonl", label="headroom-ccr")
 compress = wrap_headroom_compress(compress, profiler)
@@ -930,7 +930,7 @@ class CompactionQualityChecker:
 Wiring it to the ledger (offline enrichment — never in the hot loop):
 
 ```python
-# ctxscope quality run.jsonl --model claude-haiku-4-5
+# contextwatch quality run.jsonl --model claude-haiku-4-5
 # For each "compaction" event: reconstruct evicted text from the last turn
 # where those block ids were present, take the summary blocks' text,
 # run checker.check(), append a {"kind": "quality", "turn": N, ...} line.
@@ -974,7 +974,7 @@ Single self-contained HTML file (data embedded as JSON, zero network calls, open
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ ctxscope · text2sql-run-42   24 turns · peak 41,203 ·      │
+│ contextwatch · text2sql-run-42   24 turns · peak 41,203 ·      │
 │                                  1 server edit · 1 server comp │
 ├──────────────────────────────────────────────────────────────┤
 │  COMPOSITION STREAM  (stacked area, ~70% width of viewport)  │
@@ -1021,7 +1021,7 @@ def load_ledger(path):
     return header, turns, quality
 
 
-def render(ledger_path, out_path="ctxscope-report.html"):
+def render(ledger_path, out_path="contextwatch-report.html"):
     header, turns, quality = load_ledger(ledger_path)
     html = TEMPLATE.read_text(encoding="utf-8").replace(
         "/*__DATA__*/",
@@ -1040,18 +1040,18 @@ The template's JS (~400 lines): build stacked series from `turns[i].totals.by_so
 ## 12. CLI (`cli.py`)
 
 ```python
-"""ctxscope CLI."""
+"""contextwatch CLI."""
 
 import argparse, json
 
 
 def main():
-    p = argparse.ArgumentParser(prog="ctxscope")
+    p = argparse.ArgumentParser(prog="contextwatch")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     r = sub.add_parser("report", help="render ledger to standalone HTML")
     r.add_argument("ledger"); r.add_argument("-o", "--out",
-                   default="ctxscope-report.html")
+                   default="contextwatch-report.html")
 
     s = sub.add_parser("stats", help="print summary stats to stdout")
     s.add_argument("ledger")
@@ -1093,7 +1093,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ctxscope"
+name = "contextwatch"
 version = "0.1.0"
 description = "Context window profiler for LLM agents: per-turn token ledger, eviction and compaction tracking, compaction quality scoring, standalone HTML reports."
 readme = "README.md"
@@ -1117,34 +1117,34 @@ tiktoken  = ["tiktoken>=0.7"]
 dev       = ["pytest", "build", "twine"]
 
 [project.scripts]
-ctxscope = "ctxscope.cli:main"
+contextwatch = "contextwatch.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/sackri10/ctxscope"
+Homepage = "https://github.com/sackri10/contextwatch"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-ctxscope = ["report_template.html"]
+contextwatch = ["report_template.html"]
 ```
 
 **Publish workflow:**
 
 ```bash
 pip install build twine
-python -m build                        # → dist/ctxscope-0.1.0-py3-none-any.whl + sdist
+python -m build                        # → dist/contextwatch-0.1.0-py3-none-any.whl + sdist
 twine upload dist/*                    # needs a PyPI account + API token
 ```
 
-Check the name is free on pypi.org first (search "ctxscope"); if taken, fallbacks: `ctxlens`, `ctxscope-agent`, `loopforge-ctxscope` (nice tie-in to your existing brand — `pip install loopforge-ctxscope`, imported as `ctxscope`). Set up **trusted publishing** via GitHub Actions (`pypa/gh-action-pypi-publish`) so releases are `git tag v0.1.0 && git push --tags`.
+Check the name is free on pypi.org first (search "contextwatch"); if taken, fallbacks: `ctxlens`, `contextwatch-agent`, `loopforge-contextwatch` (nice tie-in to your existing brand — `pip install loopforge-contextwatch`, imported as `contextwatch`). Set up **trusted publishing** via GitHub Actions (`pypa/gh-action-pypi-publish`) so releases are `git tag v0.1.0 && git push --tags`.
 
 ---
 
 ## 14. Tests (`tests/test_profiler.py`) — the behaviors that must never regress
 
 ```python
-from ctxscope import ContextProfiler
+from contextwatch import ContextProfiler
 
 
 def _turns(profiler):
@@ -1207,7 +1207,7 @@ This doubles as an integration test and the GIF for your LinkedIn/Substack post.
 | Milestone | Scope | Exit criterion |
 |---|---|---|
 | **W1 — core** | models, tokenizers, classify, profiler, tests, demo script | `pytest` green; demo JSONL correct by hand-inspection |
-| **W2 — surface** | report template + renderer, CLI, Anthropic wrapper | `ctxscope report demo.jsonl` opens a chart you'd screenshot |
+| **W2 — surface** | report template + renderer, CLI, Anthropic wrapper | `contextwatch report demo.jsonl` opens a chart you'd screenshot |
 | **W3 — moat + launch** | quality checker, LangChain handler, README, PyPI publish, profile your real Text-to-SQL pipeline | one real-pipeline report + article draft |
 | **W4 — validation** | `wrap_anthropic_beta`, `server_edit`/`server_compaction` events, divergence chart, `examples/validation/` suite against every real compaction mechanism (SummarizationMiddleware, langmem, manual RemoveMessage, trim_messages, both Anthropic server-side betas), plus Headroom's `reversible_evict` and the `wrap_headroom_compress` adapter | all seven mechanisms in `examples/validation/README.md` produce exactly their expected event type; `pytest` covers the detection logic without needing network access |
 

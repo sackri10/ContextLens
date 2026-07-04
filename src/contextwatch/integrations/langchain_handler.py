@@ -1,4 +1,4 @@
-"""CtxScopeCallbackHandler: attach to any LangChain/LangGraph runnable."""
+"""ContextWatchCallbackHandler: attach to any LangChain/LangGraph runnable."""
 
 from __future__ import annotations
 from typing import Any
@@ -7,7 +7,7 @@ try:
     from langchain_core.callbacks import BaseCallbackHandler
     from langchain_core.messages import BaseMessage
 except ImportError as e:
-    raise ImportError("pip install 'ctxscope[langchain]'") from e
+    raise ImportError("pip install 'contextwatch[langchain]'") from e
 
 
 def _to_dict(msg: "BaseMessage") -> dict:
@@ -23,7 +23,7 @@ def _to_dict(msg: "BaseMessage") -> dict:
     return {"role": role, "content": content}
 
 
-class CtxScopeCallbackHandler(BaseCallbackHandler):
+class ContextWatchCallbackHandler(BaseCallbackHandler):
     def __init__(self, profiler):
         self.profiler = profiler
 

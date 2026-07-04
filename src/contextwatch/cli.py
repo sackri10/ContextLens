@@ -1,4 +1,4 @@
-"""ctxscope CLI."""
+"""contextwatch CLI."""
 
 from __future__ import annotations
 
@@ -8,12 +8,12 @@ import sys
 
 
 def main():
-    p = argparse.ArgumentParser(prog="ctxscope")
+    p = argparse.ArgumentParser(prog="contextwatch")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     r = sub.add_parser("report", help="render ledger to standalone HTML")
     r.add_argument("ledger")
-    r.add_argument("-o", "--out", default="ctxscope-report.html")
+    r.add_argument("-o", "--out", default="contextwatch-report.html")
 
     s = sub.add_parser("stats", help="print summary stats to stdout")
     s.add_argument("ledger")

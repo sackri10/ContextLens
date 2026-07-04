@@ -12,7 +12,7 @@ gets its own event type: `reversible_evict`.
 
 from __future__ import annotations
 
-from ctxscope.models import Event
+from contextwatch.models import Event
 
 
 def wrap_headroom_compress(compress_fn, profiler):

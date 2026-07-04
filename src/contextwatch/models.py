@@ -1,4 +1,4 @@
-"""Data models for the CtxScope ledger."""
+"""Data models for the ContextWatch ledger."""
 
 from __future__ import annotations
 

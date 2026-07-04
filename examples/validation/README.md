@@ -1,6 +1,6 @@
-# CtxScope Validation Examples — LangGraph & Anthropic Native Compaction
+# ContextWatch Validation Examples — LangGraph & Anthropic Native Compaction
 
-Runnable examples for validating CtxScope against every real compaction
+Runnable examples for validating ContextWatch against every real compaction
 mechanism: LangChain `SummarizationMiddleware`, langmem `SummarizationNode`,
 the manual `RemoveMessage` pattern, `trim_messages` (negative control),
 Anthropic's **server-side** context editing (`clear_tool_uses_20250919`) and
@@ -15,9 +15,9 @@ Anthropic's **server-side** context editing (`clear_tool_uses_20250919`) and
 
 > **Architecture note:** Anthropic's context editing and compaction run
 > **server-side** — the client-side `messages` list never changes.
-> CtxScope's content-hash diffing at the model-call boundary sees
+> ContextWatch's content-hash diffing at the model-call boundary sees
 > *nothing* for these. `wrap_anthropic_beta` (in
-> `ctxscope/integrations/anthropic_client.py`) instead reads
+> `contextwatch/integrations/anthropic_client.py`) instead reads
 > `response.context_management.applied_edits` and
 > `response.stop_reason == "compaction"`, surfacing them as two new event
 > types: `server_edit` and `server_compaction`. See
@@ -27,7 +27,7 @@ Anthropic's **server-side** context editing (`clear_tool_uses_20250919`) and
 ## 0. Setup
 
 ```bash
-pip install -e ./ctxscope                       # this package, editable
+pip install -e ./contextwatch                       # this package, editable
 pip install "langchain>=1.1" langchain-anthropic langgraph langmem
 export ANTHROPIC_API_KEY=sk-ant-...
 ```

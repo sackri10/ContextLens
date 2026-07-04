@@ -1,8 +1,8 @@
-# CtxScope 🔍
+# ContextWatch 🔍
 
 **Chrome DevTools' memory profiler, but for your LLM agent's context window.**
 
-[![PyPI version](https://img.shields.io/pypi/v/ctxscope.svg)](https://pypi.org/project/ctxscope/)
+[![PyPI version](https://img.shields.io/pypi/v/contextwatch.svg)](https://pypi.org/project/contextwatch/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -11,13 +11,13 @@ up with stale tool results, the framework silently summarizes or drops messages,
 recall quality degrades, and your input-token bill climbs — and you have **no
 visibility into any of it**.
 
-CtxScope intercepts your agent's LLM calls and produces a **per-turn token
+ContextWatch intercepts your agent's LLM calls and produces a **per-turn token
 ledger** of exactly what's inside the context window: what entered, what got
 evicted, what got compacted, what's stale, and what it all costs. It then renders
 everything into a **self-contained HTML report** you can open in any browser.
 
 ```
-pip install ctxscope
+pip install contextwatch
 ```
 
 ## The questions it answers
@@ -33,7 +33,7 @@ pip install ctxscope
 
 ## What makes it different
 
-CtxScope detects **every kind of context mutation**, including ones most
+ContextWatch detects **every kind of context mutation**, including ones most
 tools can't see:
 
 | Event | What happened | Detected via |
@@ -46,7 +46,7 @@ tools can't see:
 | `reversible_evict` | Reversible compression ([Headroom](https://github.com/chopratejas/headroom)) — content compressed but retrievable, **not** lost | exact `tokens_before`/`tokens_after` from the compressor |
 
 Server-side mechanisms never touch your client-side `messages` list — hash
-diffing alone sees *nothing*. CtxScope reads the API response metadata
+diffing alone sees *nothing*. ContextWatch reads the API response metadata
 instead, so nothing escapes the ledger.
 
 ## Quickstart
@@ -55,7 +55,7 @@ instead, so nothing escapes the ledger.
 
 ```python
 from anthropic import Anthropic
-from ctxscope import ContextProfiler, wrap_anthropic
+from contextwatch import ContextProfiler, wrap_anthropic
 
 profiler = ContextProfiler("run.jsonl", label="text2sql")
 client = wrap_anthropic(Anthropic(), profiler)
@@ -69,11 +69,11 @@ compaction)? Use `wrap_anthropic_beta` instead — it additionally captures
 ### LangChain / LangGraph
 
 ```python
-from ctxscope import ContextProfiler
-from ctxscope.integrations.langchain_handler import CtxScopeCallbackHandler
+from contextwatch import ContextProfiler
+from contextwatch.integrations.langchain_handler import ContextWatchCallbackHandler
 
 profiler = ContextProfiler("run.jsonl", label="text2sql")
-handler = CtxScopeCallbackHandler(profiler)
+handler = ContextWatchCallbackHandler(profiler)
 graph.invoke(state, config={"callbacks": [handler]})
 ```
 
@@ -84,8 +84,8 @@ see exactly which subagent is bloating the context.
 
 ```python
 from headroom import compress
-from ctxscope import ContextProfiler
-from ctxscope.integrations.headroom_adapter import wrap_headroom_compress
+from contextwatch import ContextProfiler
+from contextwatch.integrations.headroom_adapter import wrap_headroom_compress
 
 profiler = ContextProfiler("run.jsonl", label="my-agent")
 headroom_compress = wrap_headroom_compress(compress, profiler)
@@ -109,7 +109,7 @@ and any framework.
 ## The report
 
 ```bash
-ctxscope report run.jsonl -o report.html
+contextwatch report run.jsonl -o report.html
 ```
 
 One self-contained HTML file (no server, no dependencies, works offline) with:
@@ -126,9 +126,9 @@ One self-contained HTML file (no server, no dependencies, works offline) with:
 ## CLI
 
 ```bash
-ctxscope report run.jsonl -o report.html    # render standalone HTML
-ctxscope stats run.jsonl                    # summary stats as JSON
-ctxscope quality run.jsonl --model claude-haiku-4-5   # score compactions
+contextwatch report run.jsonl -o report.html    # render standalone HTML
+contextwatch stats run.jsonl                    # summary stats as JSON
+contextwatch quality run.jsonl --model claude-haiku-4-5   # score compactions
 ```
 
 `quality` replays probe questions against pre- and post-compaction context to
@@ -162,10 +162,10 @@ runnable scripts, one per real-world context-mutation mechanism:
 ## Install
 
 ```bash
-pip install ctxscope                  # core — stdlib only, zero dependencies
-pip install "ctxscope[anthropic]"     # + Anthropic SDK wrapper
-pip install "ctxscope[langchain]"     # + LangChain/LangGraph callback
-pip install "ctxscope[tiktoken]"      # + exact tokenizer for OpenAI models
+pip install contextwatch                  # core — stdlib only, zero dependencies
+pip install "contextwatch[anthropic]"     # + Anthropic SDK wrapper
+pip install "contextwatch[langchain]"     # + LangChain/LangGraph callback
+pip install "contextwatch[tiktoken]"      # + exact tokenizer for OpenAI models
 ```
 
 ## Design principles
@@ -183,8 +183,8 @@ pip install "ctxscope[tiktoken]"      # + exact tokenizer for OpenAI models
 ## Development
 
 ```bash
-git clone https://github.com/sackri10/ctxscope.git
-cd ctxscope
+git clone https://github.com/sackri10/contextwatch.git
+cd contextwatch
 pip install -e ".[dev]"
 pytest
 ```
