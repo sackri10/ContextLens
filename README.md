@@ -192,6 +192,12 @@ pytest
 See [`docs/architecture.md`](docs/architecture.md) for the full design spec —
 data model, event detection, integration internals, and build order.
 
+See [`ROADMAP.md`](ROADMAP.md) for where this is headed — a transparent
+proxy for zero-instrumentation capture across any language, a live
+TUI/browser/editor surface instead of a one-shot report, and a rules-based
+advisor that turns ledger data into concrete "compress/evict/cache this"
+suggestions.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
